@@ -1,0 +1,30 @@
+# Replace the usernames with your real GitHub handles after creating the repo.
+# Each person is automatically requested as reviewer for the other's areas
+# only if you swap them; by default the OWNER reviews changes to their own area.
+
+/app/api/auth/            @JAANHAVI_GITHUB
+/app/api/incidents/       @JAANHAVI_GITHUB
+/app/login/               @JAANHAVI_GITHUB
+/app/incidents/           @JAANHAVI_GITHUB
+/components/incident/     @JAANHAVI_GITHUB
+/lib/auth.ts              @JAANHAVI_GITHUB
+/sql/03_jaanhavi_*        @JAANHAVI_GITHUB
+/sql/05_jaanhavi_*        @JAANHAVI_GITHUB
+/sql/06_jaanhavi_*        @JAANHAVI_GITHUB
+/sql/07_jaanhavi_*        @JAANHAVI_GITHUB
+
+/app/api/services/        @KUSHI_GITHUB
+/app/api/dependencies/    @KUSHI_GITHUB
+/app/api/deployments/     @KUSHI_GITHUB
+/app/api/dashboard/       @KUSHI_GITHUB
+/app/api/search/          @KUSHI_GITHUB
+/app/api/users/           @KUSHI_GITHUB
+/app/dashboard/           @KUSHI_GITHUB
+/app/search/              @KUSHI_GITHUB
+/app/admin/               @KUSHI_GITHUB
+/components/panels/       @KUSHI_GITHUB
+/components/charts/       @KUSHI_GITHUB
+/lib/embeddings.ts        @KUSHI_GITHUB
+/sql/04_kushi_*           @KUSHI_GITHUB
+/sql/08_kushi_*           @KUSHI_GITHUB
+/sql/09_kushi_*           @KUSHI_GITHUB
