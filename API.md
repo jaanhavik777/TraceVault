@@ -14,7 +14,8 @@ All routes (except `/api/auth/login` and `/api/health`) require a valid session 
 | GET | /api/incidents | any | query: `status`, `severity`, `serviceId`, `from`, `to` |
 | POST | /api/incidents | ENGINEER | body `{ title, description, severityId, serviceIds[], primaryServiceId }`; calls `upsertIncidentEmbedding` |
 | GET | /api/incidents/[id] | any | incident + events + resolution |
-| PATCH | /api/incidents/[id] | ENGINEER (assigned) | update status |
+| PATCH | /api/incidents/[id] | ENGINEER (assigned) | body `{ status }`; see transitions below |
+| GET | /api/lookups | any | statuses, severities, services, engineers, rootCauseCategories, eventTypes for dropdowns |
 | POST | /api/incidents/[id]/assign | ADMIN/ENGINEER | calls `assign_incident()` |
 | POST | /api/incidents/[id]/events | ENGINEER | body `{ eventType, description }` |
 | POST | /api/incidents/[id]/resolve | ENGINEER | calls `resolve_incident()`, then `upsertIncidentEmbedding` |
