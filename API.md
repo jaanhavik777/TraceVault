@@ -10,6 +10,7 @@ All routes (except `/api/auth/login` and `/api/health`) require a valid session 
 |---|---|---|---|
 | POST | /api/auth/login | public | body `{ email, password }` -> sets cookie, returns `{ userId, role, fullName }` |
 | POST | /api/auth/logout | any | clears cookie |
+| GET | /api/auth/me | any | returns `{ userId, role, fullName, email }` |
 | GET | /api/incidents | any | query: `status`, `severity`, `serviceId`, `from`, `to` |
 | POST | /api/incidents | ENGINEER | body `{ title, description, severityId, serviceIds[], primaryServiceId }`; calls `upsertIncidentEmbedding` |
 | GET | /api/incidents/[id] | any | incident + events + resolution |
@@ -63,3 +64,19 @@ All routes (except `/api/auth/login` and `/api/health`) require a valid session 
 
 `lib/embeddings.ts -> upsertIncidentEmbedding(incidentId: number): Promise<boolean>`
 Safe to call repeatedly, never throws (incident creation must not fail because of search).
+
+## Auth helper usage (lib/auth.ts)
+
+```ts
+export async function POST(req: NextRequest) {
+  try {
+    const user = await requireRole(req, ["ADMIN"]);   // throws AuthError 401 / 403
+    // ... validate with zod, query the DB ...
+    return NextResponse.json(result);
+  } catch (e) {
+    return handleError(e);                              // AuthError -> 401/403, ZodError -> 400, else 500
+  }
+}
+```
+Session cookie: `tv_session` (httpOnly JWT, 8 hours). `GET /api/auth/me` returns the current user.
+Pages `/admin` and `/dashboard` are admin-only (enforced in `middleware.ts`).
