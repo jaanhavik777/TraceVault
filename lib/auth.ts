@@ -32,13 +32,6 @@ export class AuthError extends Error {
   }
 }
 
-/** Generic HTTP error for route handlers: throw new HttpError(404, "Incident not found"). */
-export class HttpError extends Error {
-  constructor(public status: 400 | 404 | 409, message: string) {
-    super(message);
-  }
-}
-
 /** Hash a plain password with bcrypt (cost 10). */
 export async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, 10);
@@ -82,24 +75,6 @@ export function handleError(e: unknown): NextResponse {
   if (e instanceof AuthError) return NextResponse.json({ error: e.message }, { status: e.status });
   if (e instanceof ZodError) {
     return NextResponse.json({ error: "Invalid input", details: e.flatten().fieldErrors }, { status: 400 });
-  }
-  if (e instanceof HttpError) return NextResponse.json({ error: e.message }, { status: e.status });
-
-  // Friendly messages for PostgreSQL errors (constraint violations, RAISE EXCEPTION in our functions)
-  const pg = e as { code?: string; message?: string; constraint?: string };
-  if (pg && typeof pg.code === "string") {
-    switch (pg.code) {
-      case "P0001": // RAISE EXCEPTION from assign_incident() / resolve_incident()
-        return NextResponse.json({ error: pg.message }, { status: 400 });
-      case "23505":
-        return NextResponse.json({ error: "Already exists", constraint: pg.constraint }, { status: 409 });
-      case "23503":
-        return NextResponse.json({ error: "A referenced record does not exist", constraint: pg.constraint }, { status: 400 });
-      case "23514":
-        return NextResponse.json({ error: "Value violates a database rule", constraint: pg.constraint }, { status: 400 });
-      case "23502":
-        return NextResponse.json({ error: "A required value is missing" }, { status: 400 });
-    }
   }
   console.error(e);
   return NextResponse.json({ error: "Internal server error" }, { status: 500 });

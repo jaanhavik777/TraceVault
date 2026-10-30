@@ -21,3 +21,5 @@ coverage/
 .vscode/
 .idea/
 *.tsbuildinfo
+sql/local_passwords.sql
+cookies.txt
