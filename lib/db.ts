@@ -1,5 +1,10 @@
 // Shared PostgreSQL pool. OWNER: shared (do not change without telling your partner).
-import { Pool, QueryResultRow } from "pg";
+import { Pool, QueryResultRow, types } from "pg";
+
+// Column type 1114 = TIMESTAMP (without time zone). The database stores UTC (Docker default), but
+// node-pg would read those values as the machine's LOCAL time, shifting every timestamp by the UTC
+// offset (5h30m in India). Parse them explicitly as UTC so the browser can convert to local time.
+types.setTypeParser(1114, (value: string) => new Date(value.replace(" ", "T") + "Z"));
 
 const globalForPg = globalThis as unknown as { pgPool?: Pool };
 

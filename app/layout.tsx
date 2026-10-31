@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { ReactNode } from "react";
+import NavBar from "@/components/incident/NavBar";
 
 export const metadata = {
   title: "TraceVault",
@@ -9,7 +10,10 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <NavBar />
+        {children}
+      </body>
     </html>
   );
 }
