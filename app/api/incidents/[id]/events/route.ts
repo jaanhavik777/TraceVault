@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { query } from "@/lib/db";
+import { withTransaction } from "@/lib/db";
 import { HttpError, handleError, requireRole } from "@/lib/auth";
-import { EVENT_TYPES, parseId } from "@/lib/incidents";
+import { EVENT_TYPES, lockIncident, parseId } from "@/lib/incidents";
 
 const Body = z.object({
   eventType: z.enum(EVENT_TYPES),
@@ -10,21 +10,27 @@ const Body = z.object({
 });
 
 // POST /api/incidents/[id]/events  body { eventType, description }  (ENGINEER)
+// Any engineer may add to the timeline of an open incident; resolved/closed timelines are frozen.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireRole(req, ["ENGINEER"]);
     const id = parseId((await params).id);
     const body = Body.parse(await req.json().catch(() => ({})));
 
-    const rows = await query(
-      `INSERT INTO incident_events (incident_id, user_id, event_type, event_description)
-       SELECT $1::int, $2::int, $3::text, $4::text
-       WHERE EXISTS (SELECT 1 FROM incidents WHERE incident_id = $1::int)
-       RETURNING event_id, event_type, event_description, event_timestamp, user_id`,
-      [id, user.userId, body.eventType, body.description]
-    );
-    if (!rows[0]) throw new HttpError(404, "Incident not found");
-    return NextResponse.json({ ...rows[0], user_name: user.fullName }, { status: 201 });
+    const event = await withTransaction(async (client) => {
+      const inc = await lockIncident(client, id);
+      if (inc.status === "RESOLVED" || inc.status === "CLOSED") {
+        throw new HttpError(409, "This incident is closed; its timeline can no longer be changed");
+      }
+      const { rows } = await client.query(
+        `INSERT INTO incident_events (incident_id, user_id, event_type, event_description)
+         VALUES ($1, $2, $3, $4)
+         RETURNING event_id, event_type, event_description, event_timestamp, user_id`,
+        [id, user.userId, body.eventType, body.description]
+      );
+      return rows[0];
+    });
+    return NextResponse.json({ ...event, user_name: user.fullName }, { status: 201 });
   } catch (e) {
     return handleError(e);
   }

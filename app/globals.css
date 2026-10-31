@@ -83,3 +83,14 @@ input:focus, select:focus, textarea:focus {
 .sev-high { background: var(--pink); }
 .sev-critical { background: var(--rose-deep); color: #fff; border-color: var(--rose-deep); }
 .status { background: var(--blue); }
+
+/* layout helpers + nav */
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.grid2 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.btn-sm { padding: 5px 10px; font-size: 14px; }
+.nav { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 10px 24px; background: var(--seashell); border-bottom: 2px solid var(--pink); }
+.nav a { text-decoration: none; font-weight: 700; padding: 4px 10px; border-radius: 6px; }
+.nav a.active { background: var(--pink); }
+.nav .spacer { flex: 1; }
+.timeline { list-style: none; margin: 0 0 12px; padding: 0 0 0 14px; border-left: 3px solid var(--pink); }
+.timeline li { padding: 6px 0 6px 8px; }

@@ -1,3 +1,4 @@
+
 -- =====================================================================
 -- Base seed data: roles, users, statuses, severities, services, dependencies, deployments
 -- Replace placeholder password hashes with real bcrypt hashes (seed script)
@@ -17,7 +18,7 @@ INSERT INTO users (role_id, full_name, email, password_hash) VALUES
  (1, 'Admin User',       'admin@tracevault.io',   '$2b$10$PLACEHOLDER_ADMIN'),
  (2, 'Jaanhavi Kher',    'jaanhavi@tracevault.io','$2b$10$PLACEHOLDER_ENG1'),
  (2, 'Kushi Niranjana',  'kushi@tracevault.io',   '$2b$10$PLACEHOLDER_ENG2'),
- (2, 'Ravi Menon',       'ravi@tracevault.io',    '$2b$10$PLACEHOLDER_ENG3');
+ (2, 'Krishna Manoj',       'krishna@tracevault.io',    '$2b$10$PLACEHOLDER_ENG3');
 
 INSERT INTO incident_statuses (status_name) VALUES
  ('OPEN'), ('INVESTIGATING'), ('MITIGATED'), ('RESOLVED'), ('CLOSED');
