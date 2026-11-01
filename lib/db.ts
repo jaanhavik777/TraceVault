@@ -13,7 +13,9 @@ function createPool(): Pool {
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set. Copy .env.example to .env.local.");
   }
-  return new Pool({ connectionString });
+  // connectionTimeoutMillis: if the database is unreachable (e.g. Docker is not running), fail in 5 s
+  // with a clear error instead of leaving the page on "Loading..." forever.
+  return new Pool({ connectionString, connectionTimeoutMillis: 5000 });
 }
 
 export const pool: Pool = globalForPg.pgPool ?? createPool();

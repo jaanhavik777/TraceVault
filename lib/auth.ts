@@ -85,6 +85,17 @@ export function handleError(e: unknown): NextResponse {
   }
   if (e instanceof HttpError) return NextResponse.json({ error: e.message }, { status: e.status });
 
+  // Database unreachable (Docker stopped, wrong port, etc.)
+  const msg = e instanceof Error ? e.message : "";
+  const code = (e as { code?: string })?.code;
+  if (
+    /timeout exceeded when trying to connect|Connection terminated|ECONNREFUSED/i.test(msg) ||
+    ["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET", "57P01", "57P03"].includes(code ?? "")
+  ) {
+    console.error("Database unavailable:", msg || code);
+    return NextResponse.json({ error: "Database unavailable. Is Docker running?" }, { status: 503 });
+  }
+
   // Friendly messages for PostgreSQL errors (constraint violations, RAISE EXCEPTION in our functions)
   const pg = e as { code?: string; message?: string; constraint?: string };
   if (pg && typeof pg.code === "string") {

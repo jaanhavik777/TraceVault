@@ -11,7 +11,7 @@ All routes (except `/api/auth/login` and `/api/health`) require a valid session 
 | POST | /api/auth/login | public | body `{ email, password }` -> sets cookie, returns `{ userId, role, fullName }` |
 | POST | /api/auth/logout | any | clears cookie |
 | GET | /api/auth/me | any | returns `{ userId, role, fullName, email }` |
-| GET | /api/incidents | any | query: `status`, `severity`, `serviceId`, `from`, `to` |
+| GET | /api/incidents | any | query: `status`, `severity`, `serviceId`, `from`, `to` (YYYY-MM-DD), `assignedTo=me` |
 | POST | /api/incidents | ENGINEER | body `{ title, description, severityId, serviceIds[], primaryServiceId }`; calls `upsertIncidentEmbedding` |
 | GET | /api/incidents/[id] | any | incident + events + resolution |
 | PATCH | /api/incidents/[id] | ENGINEER (assigned) | body `{ status }`; see transitions below |
@@ -81,3 +81,24 @@ export async function POST(req: NextRequest) {
 ```
 Session cookie: `tv_session` (httpOnly JWT, 8 hours). `GET /api/auth/me` returns the current user.
 Pages `/admin` and `/dashboard` are admin-only (enforced in `middleware.ts`).
+
+## Incident API details (Jaanhavi)
+
+`GET /api/incidents` returns an array of
+`{ incident_id, title, status, severity, created_at, updated_at, reporter_name, assigned_engineer_id, assigned_name, primary_service }`.
+
+`GET /api/incidents/[id]` returns `{ incident, services, events, resolution }`:
+- `incident`: `{ incident_id, title, description, priority_score, status, severity, created_at, updated_at, reporter_id, reporter_name, assigned_engineer_id, assigned_name }`
+- `services`: `[{ service_id, service_name, criticality, is_primary }]`
+- `events`: `[{ event_id, event_type, event_description, event_timestamp, user_id, user_name }]` (oldest first)
+- `resolution`: `null` or `{ resolution_id, root_cause_category, root_cause_description, resolution_summary, resolved_at, resolved_by, resolved_by_name }`
+
+Allowed manual status changes (PATCH): `OPEN -> INVESTIGATING`, `INVESTIGATING -> MITIGATED | OPEN`, `MITIGATED -> INVESTIGATING`, `RESOLVED -> CLOSED`.
+`RESOLVED` is only set by `POST /api/incidents/[id]/resolve`.
+Engineers can change or resolve only incidents assigned to them. Admins are read-only on incidents but may assign.
+
+Event types: `NOTE, HYPOTHESIS, ACTION, MITIGATION, ROLLBACK`.
+Root cause categories: `DATABASE, DEPLOYMENT, CONFIGURATION, INFRASTRUCTURE, NETWORK, CAPACITY, QUEUE, EXTERNAL_DEPENDENCY, APPLICATION_BUG, OTHER`.
+
+`handleError()` (lib/auth.ts) now also maps PostgreSQL errors for every route: unique violation -> 409, foreign key -> 400, CHECK -> 400,
+NOT NULL -> 400, `RAISE EXCEPTION` from our functions -> 400. It also understands `HttpError(status, message)`.

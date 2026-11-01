@@ -35,22 +35,22 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ maxWidth: 380 }}>
+    <main style={{ maxWidth: 400, paddingTop: 80 }}>
       <h1>TraceVault</h1>
       <p className="muted">Sign in to investigate incidents.</p>
-      <form onSubmit={onSubmit} className="card" style={{ display: "grid", gap: 12 }}>
+      <form onSubmit={onSubmit} className="card" style={{ display: "grid", gap: 14 }}>
         <label>
           Email
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                 style={{ width: "100%", padding: 8, marginTop: 4 }} autoComplete="username" />
+                 autoComplete="username" />
         </label>
         <label>
           Password
           <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                 style={{ width: "100%", padding: 8, marginTop: 4 }} autoComplete="current-password" />
+                 autoComplete="current-password" />
         </label>
-        {error && <p role="alert" style={{ color: "#ff6b6b", margin: 0 }}>{error}</p>}
-        <button type="submit" disabled={busy} style={{ padding: 10, cursor: "pointer" }}>
+        {error && <p role="alert" className="error">{error}</p>}
+        <button type="submit" disabled={busy} className="btn">
           {busy ? "Signing in..." : "Sign in"}
         </button>
       </form>
