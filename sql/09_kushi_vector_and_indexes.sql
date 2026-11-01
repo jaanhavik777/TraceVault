@@ -10,9 +10,6 @@
 --   INSERT INTO incident_embeddings (incident_id, source_text, embedding, embedding_model)
 --   VALUES ($1, $2, $3::vector, 'text-embedding-3-small');
 --
--- Recommended one-time additions (run after the table has data):
-ALTER TABLE incident_embeddings
-ADD CONSTRAINT uq_embedding_incident UNIQUE (incident_id);
 
 -- ivfflat needs rows present when built; use lists ~ sqrt(row count)
 CREATE INDEX idx_incident_embeddings_vector
