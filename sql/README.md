@@ -18,3 +18,7 @@ Notes:
 - Triggers (03) must exist before incidents are seeded (05), or timeline events won't be auto-created.
 - File 06 deliberately contains a failing transaction (rollback demo); do not run it with `ON_ERROR_STOP`.
 - Password hashes in 02 are placeholders until the seed script (Jaanhavi) writes real bcrypt hashes.
+
+## Screenshot order
+`npm run db:setup` first, then `bash scripts/run-demos.sh jaanhavi` (or `kushi`, or `all`).
+It resets the database and runs the query files (07, 08) **before** the transaction demo (06), because 06 changes the data.
