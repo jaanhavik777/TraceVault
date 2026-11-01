@@ -223,7 +223,7 @@ CREATE TABLE incident_embeddings (
 
     source_text TEXT NOT NULL,
 
-    embedding VECTOR(1536) NOT NULL,
+    embedding VECTOR(768) NOT NULL,
 
     embedding_model VARCHAR(100) NOT NULL,
 
@@ -232,7 +232,10 @@ CREATE TABLE incident_embeddings (
     CONSTRAINT fk_embedding_incident
         FOREIGN KEY (incident_id)
         REFERENCES incidents(incident_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    -- one embedding per incident, so re-indexing is an upsert
+    CONSTRAINT uq_embedding_incident UNIQUE (incident_id)
 );
 CREATE TABLE audit_logs (
     audit_id SERIAL PRIMARY KEY,

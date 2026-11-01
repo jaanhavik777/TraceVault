@@ -29,15 +29,17 @@ All routes (except `/api/auth/login` and `/api/health`) require a valid session 
 | GET/POST/PATCH | /api/users | ADMIN | user management |
 | GET/POST | /api/deployments | any / ENGINEER | filter by `serviceId` |
 | GET | /api/dashboard | ADMIN | see shape below |
-| GET | /api/search?q= | any | semantic search, see shape below |
-| GET | /api/incidents/[id]/similar | any | see shape below |
+| GET | /api/search?q=&limit=5&resolvedOnly=1 | any | semantic search over incidents + resolutions (pgvector); 503 if Ollama is unavailable |
+| GET | /api/incidents/[id]/similar?limit=5 | any | historical incidents most similar to this one (excludes itself) |
+| POST | /api/embeddings/backfill[?all=1] | ADMIN | builds embeddings for incidents that have none (all=1 rebuilds every one) |
 | GET | /api/incidents/[id]/context | any | see shape below |
 
 ## Response shapes (Kushi's endpoints that Jaanhavi's pages consume)
 
 `GET /api/incidents/[id]/similar`
 ```json
-[{ "incident_id": 821, "title": "...", "similarity_pct": 94.2, "root_cause": "...", "resolution": "..." }]
+[{ "incident_id": 821, "title": "...", "status": "RESOLVED", "severity": "CRITICAL", "similarity_pct": 94.2,
+   "root_cause": "...", "root_cause_category": "DATABASE", "resolution": "..." }]
 ```
 
 `GET /api/incidents/[id]/context`
@@ -102,3 +104,9 @@ Root cause categories: `DATABASE, DEPLOYMENT, CONFIGURATION, INFRASTRUCTURE, NET
 
 `handleError()` (lib/auth.ts) now also maps PostgreSQL errors for every route: unique violation -> 409, foreign key -> 400, CHECK -> 400,
 NOT NULL -> 400, `RAISE EXCEPTION` from our functions -> 400. It also understands `HttpError(status, message)`.
+
+## Embeddings (Kushi)
+
+Model `nomic-embed-text` through a local Ollama (`OLLAMA_URL`, default http://localhost:11434), 768 dimensions, cosine similarity, HNSW index.
+`upsertIncidentEmbedding(id)` runs after every incident create and resolve and never throws. If Ollama is down the search endpoints return
+`503 { "error": "..." }` with a message saying what to start or install; everything else keeps working.
