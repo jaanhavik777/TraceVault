@@ -1,47 +1,93 @@
-# TraceVault – Database and Application Testing
+# Testing
 
-## 1. Database Constraint Tests
+## 1. Strategy
+Testing is done at three levels, matching the layers of the system:
 
-The following negative tests were executed against PostgreSQL.
-
-| Test | Expected Result | Actual Result |
+| Level | What it proves | How |
 |---|---|---|
-| Insert service with criticality `URGENT` | CHECK constraint violation | Passed – `chk_service_criticality` |
-| Insert self-dependency (1,1) | Rejected | Passed – `chk_no_self_dependency` |
-| Insert duplicate dependency (1,2) | Rejected | Passed – `uq_service_dependency` |
-| Insert deployment with status `BROKEN` | CHECK constraint violation | Passed – `chk_deployment_status` |
+| Database | Constraints, triggers, stored functions, views, indexes, vector column and cascades behave as designed | `tests/db-tests.sql` (30 tests, runs in a transaction that is rolled back) |
+| API | Authentication, role-based authorization, validation, the incident lifecycle and semantic search | `tests/api.test.mjs` (72 tests against the running app and real PostgreSQL) |
+| User interface | The pages work in a browser for each role | Manual test cases in section 4 (each has a screenshot) |
 
-All four invalid database operations were rejected successfully.
+The automated tests use the real database, not mocks, so they exercise the same SQL, triggers and functions that the application uses.
 
-## 2. API Authorization Test
+## 2. Test environment
+- PostgreSQL 16 with pgvector (Docker, `pgvector/pgvector:pg16`), schema and seed data from `npm run db:setup`
+- Next.js application (`npm run dev`), Node.js 20+
+- Ollama with `nomic-embed-text` for the semantic search tests (without Ollama those 13 tests are reported as SKIPPED, not passed)
+- Demo users: one admin and three engineers, all with the password `Password@123` (demo data only)
 
-**Test:** Non-admin user attempts to create a service using `POST /api/services`.
+## 3. How to run the automated tests
+Start the database and the app (`docker compose up -d`, then `npm run dev` in a second terminal) and make sure Ollama is running, then:
 
-**Expected:** HTTP 403 Forbidden.
-
-**Actual:** HTTP 403 Forbidden.
-
-Response:
-```json
-{"error":"Forbidden for your role"}
+```bash
+npm install -D tsx                                         # once: runs scripts/backfill-embeddings.ts
+npm pkg set scripts.test:all="bash scripts/run-tests.sh"   # once
+npm run test:all
 ```
 
-**Result:** Passed. Role-based access control prevents unauthorized service creation.
+The script resets the database to the seed data, indexes the seeded incidents with `scripts/backfill-embeddings.ts` (when Ollama is running), runs both suites, prints PASS/FAIL per test and writes the full table, with expected and
+actual values, to **`docs/test-results.md`**. That file is the evidence for the results; include it (and a screenshot of the summary) in the report.
+The database suite can also be run alone to take a screenshot:
+`docker exec -i tracevault-db psql -U tracevault -d tracevault < tests/db-tests.sql`
 
-## 3. UI Functionality Tests
+### Coverage of the automated tests
 
-The following functional tests are included in the application testing plan:
+| ID range | Area | Count | Examples |
+|---|---|---|---|
+| T-DB-01 to 05 | Schema | 5 | 14 tables, 2 roles, pgvector installed, indexes exist, `VECTOR(768)` |
+| T-DB-06 to 08 | Views | 3 | per-service summary, deployment correlation |
+| T-DB-09 to 17 | Data integrity | 9 | NOT NULL, CHECK, UNIQUE and FOREIGN KEY violations are rejected with the expected SQLSTATE |
+| T-DB-18 to 20 | Vector column | 3 | one embedding per incident, wrong vector size rejected, cosine distance |
+| T-DB-21 to 24 | Triggers | 4 | automatic CREATED / STATUS_CHANGE events, audit row, `updated_at` |
+| T-DB-25 to 29 | Functions and atomicity | 5 | `assign_incident` / `resolve_incident`, complete rollback on failure |
+| T-DB-30 | Cascade | 1 | deleting an incident removes its events, links and resolution |
+| T-AUTH-01 to 13 | Authentication and authorization | 13 | login, no user enumeration, tampered cookie, role redirects |
+| T-INC-01 to 19 | Incident list, filters, create, detail | 19 | all filters, SQL-injection text, validation, correct timestamps |
+| T-WF-01 to 27 | Workflow | 27 | assign, status rules, timeline, resolve, permissions, frozen closed incidents |
+| T-SRCH-01 to 13 | Semantic search | 13 | every incident indexed with 768-dim vectors, ranking, similar-incident lookup, automatic indexing on create and resolve |
 
-| Test | Expected Result |
-|---|---|
-| Add a service dependency | New dependency appears in the dependency interface |
-| Semantic incident search | Results are ranked by similarity and display similarity percentages |
-| Dashboard validation | Dashboard metrics match corresponding PostgreSQL SELECT counts |
+## 4. Manual user-interface test cases
+Run each case in the browser and tick the result. Save a screenshot as `docs/screenshots/ui-<ID>.png`.
 
-## 4. Dashboard Data Validation
+| ID | Steps | Expected | Result |
+|---|---|---|---|
+| T-UI-01 | Open `/login`, enter a valid email and a wrong password | "Invalid email or password" is shown, no redirect | ☐ pass ☐ fail |
+| T-UI-02 | Log in as an engineer | Redirected to `/incidents`; nav shows Incidents and Search only | ☐ pass ☐ fail |
+| T-UI-03 | As an engineer open `/admin` and `/dashboard` | Redirected back to `/incidents` | ☐ pass ☐ fail |
+| T-UI-04 | Log in as admin | Nav also shows Dashboard and Admin; no "New incident" button | ☐ pass ☐ fail |
+| T-UI-05 | On `/incidents` filter by status, severity and service | Table updates; "Clear filters" restores all rows | ☐ pass ☐ fail |
+| T-UI-06 | As an engineer submit "New incident" with no service selected | Error message, nothing created | ☐ pass ☐ fail |
+| T-UI-07 | Create an incident with two services | Redirected to its page; timeline shows "Incident created"; the time matches the local clock | ☐ pass ☐ fail |
+| T-UI-08 | Open an incident assigned to another engineer | No status buttons, no resolve form, no Assign control | ☐ pass ☐ fail |
+| T-UI-09 | As admin assign an unassigned incident to an engineer | Assignee shown, status INVESTIGATING, timeline gains two events | ☐ pass ☐ fail |
+| T-UI-10 | As the assigned engineer move the status and add a timeline note | Status badge and timeline update | ☐ pass ☐ fail |
+| T-UI-11 | As the assigned engineer record a resolution | Resolution card appears; resolve form disappears; timeline frozen | ☐ pass ☐ fail |
+| T-UI-12 | On `/search` click "Use example" then "Search" | Five ranked results with similarity %, root cause and resolution | ☐ pass ☐ fail |
+| T-UI-13 | Open an incident page | "Similar historical incidents" panel lists other incidents | ☐ pass ☐ fail |
+| T-UI-14 | Stop Ollama, then search | A clear "semantic search is unavailable" message; the rest of the app keeps working. **Known gap:** the current implementation shows an empty result list with no message (see section 5) | ☐ pass ☐ fail |
+| T-UI-15 | Stop Docker, then try to log in | An "Database unavailable. Is Docker running?" message within seconds, no endless spinner | ☐ pass ☐ fail |
+| T-UI-16 | Click "Log out", then press the browser Back button | Protected pages redirect to `/login` | ☐ pass ☐ fail |
 
-Dashboard values should be verified against SQL aggregation queries for incident status, severity, and resolution metrics.
+## 5. Defects found during testing (and fixed)
+Testing found real problems; each fix is covered by a test that now guards it.
 
-## 5. Conclusion
+| Defect | Found by | Fix | Guarded by |
+|---|---|---|---|
+| Timestamps created by the database displayed 5 h 30 min in the past on a machine in India: the Node driver read UTC `TIMESTAMP` values as local time | Running the application with the server in the India time zone | Parse `TIMESTAMP` columns as UTC in `lib/db.ts` | T-INC-17 |
+| Any engineer could take over another engineer's incident | Review of the permission rules | Engineers may only assign unassigned incidents or their own; admins can assign any open incident | T-WF-22 to 24 |
+| Resolved or closed incidents could still be assigned and receive timeline events | Review of the lifecycle rules | Rejected with 409 | T-WF-25, 26 |
+| Login hung indefinitely when the database was not reachable | Manual test with Docker stopped | 5 s connection timeout and a clear 503 message | T-UI-15 |
+| The demo-password script only updated users by fixed email, so a renamed seed user could never log in | Logging in as the renamed user | One statement updates every user still holding a placeholder hash | T-AUTH-06 |
+| Demo query output depended on the order the SQL files were run (a data-changing demo ran first) | Running the demo files | Fixed run order in `scripts/run-demos.sh`; before/after output in the transaction demo | n/a (documented) |
+| Semantic search fails silently: with Ollama stopped, `/api/search` and `/api/incidents/[id]/similar` return 200 with an empty list, so the user cannot tell "no matches" from "service down" | Measured with Ollama stopped; manual case T-UI-14 | **Open**: the embedding code should raise a clear error and the routes should answer 503 with a message | T-UI-14 |
+| A shared module lost an export after a merge conflict, breaking five files | `npm run typecheck` | Restored the export; typecheck is run before every merge | typecheck |
 
-The database constraint tests and API authorization test executed successfully. The database rejected invalid records, enforced dependency integrity, and prevented unauthorized service creation. UI functionality and dashboard metrics should also be verified to complete end-to-end testing.
+## 6. Limitations
+- No load or performance testing; the data set is small by design.
+- No automated browser tests; the user interface is verified with the manual cases above.
+- Semantic ranking quality is judged on the example query (T-SRCH-05, T-SRCH-09) and by reading the results, not by a benchmark.
+- The vector index is IVFFlat. On a table of a few incidents PostgreSQL chooses a sequential scan anyway, so results are exact. The `EXPLAIN` demo needs `SET enable_seqscan = off`, and IVFFlat with that setting can return fewer rows unless `SET ivfflat.probes` is raised.
+- The services, dependencies, deployments, dashboard and admin APIs are not covered by the automated suite yet.
+- A deactivated user stays logged in until the session token expires (8 hours).
+- Test users share one demo password; this must never be used outside local development.
