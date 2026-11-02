@@ -17,7 +17,7 @@ Run order for a fresh database (`npm run db:setup` does 01 to 05 for you):
 Notes:
 - Triggers (03) must exist before incidents are seeded (05), or timeline events won't be auto-created.
 - File 06 deliberately contains a failing transaction (rollback demo); do not run it with `ON_ERROR_STOP`.
-- Password hashes in 02 are placeholders until the seed script (Jaanhavi) writes real bcrypt hashes.
+- Password hashes in 02 are placeholders until the password helper writes real bcrypt hashes.\n- `npm run db:vector-index` creates the IVFFlat index after embeddings have been generated; it is safe to rerun.
 
 ## Screenshot order
 `npm run db:setup` first, then `bash scripts/run-demos.sh jaanhavi` (or `kushi`, or `all`).

@@ -33,12 +33,22 @@ cp .env.example .env.local
 # 4. build the schema and seed data
 npm run db:setup
 
-# 5. run the app
+# 5. (Optional, for semantic search) install Ollama and the embedding model
+#    https://ollama.com/download
+ollama pull nomic-embed-text
+npm run embeddings:backfill
+npm run db:vector-index
+
+# 6. run the app
 npm run dev
 # open http://localhost:3000   (health check: http://localhost:3000/api/health)
 ```
 
-To wipe and rebuild the database: `npm run db:reset` (development only).
+Semantic search requires Ollama running locally with `nomic-embed-text`. If Ollama is unavailable, search endpoints return HTTP 503 with a helpful message; incident creation and resolution continue to work.
+
+To rebuild the local database and demo accounts, run `npm run demo:reset` (destructive: drops and recreates the public schema). To backfill embeddings and create the vector index without resetting data, run `npm run embeddings:backfill` followed by `npm run db:vector-index`.
+
+To wipe and rebuild only the database schema and seed data: `npm run db:reset` (development only).
 
 ## Project structure
 ```

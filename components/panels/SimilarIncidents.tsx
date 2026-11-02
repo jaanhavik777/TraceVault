@@ -36,11 +36,13 @@ export default function SimilarIncidents({
           `/api/incidents/${incidentId}/similar`
         );
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch similar incidents");
-        }
+        const data = await response.json().catch(() => null);
 
-        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(
+            data?.error || "Failed to fetch similar incidents"
+          );
+        }
 
         const results: SimilarIncident[] = Array.isArray(data)
           ? data
@@ -84,7 +86,7 @@ export default function SimilarIncidents({
       )}
 
       {error && (
-        <p className="muted">{error}</p>
+        <p role="alert" className="text-red-600">{error}</p>
       )}
 
       {!loading && !error && incidents.length === 0 && (

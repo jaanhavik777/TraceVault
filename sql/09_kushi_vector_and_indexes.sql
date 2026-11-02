@@ -12,8 +12,10 @@
 --
 
 -- ivfflat needs rows present when built; use lists ~ sqrt(row count)
-CREATE INDEX idx_incident_embeddings_vector
+CREATE INDEX IF NOT EXISTS idx_incident_embeddings_vector
 ON incident_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
+
+ANALYZE incident_embeddings;
 
 -- Similarity search ($1 = query embedding). <=> is cosine DISTANCE, so
 -- similarity = 1 - distance.

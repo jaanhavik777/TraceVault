@@ -22,6 +22,16 @@ pause() { echo; read -rp ">>> Screenshot now, then press Enter to continue... " 
 bash scripts/reset-db.sh >/dev/null
 node scripts/make-password-sql.js > sql/local_passwords.sql   # real hashes for every seeded user
 run_file sql/local_passwords.sql >/dev/null
+
+OLLAMA_ADDR="${OLLAMA_BASE_URL:-http://localhost:11434}"
+if curl -fsS -m 3 -o /dev/null "$OLLAMA_ADDR"; then
+  echo "Ollama detected: generating seeded incident embeddings and applying vector index."
+  npx --yes tsx scripts/backfill-embeddings.ts
+  bash scripts/apply-vector-index.sh
+else
+  echo "Ollama unavailable: semantic/vector demos are skipped until embeddings are generated."
+fi
+
 echo "Database reset. Starting demos for: $WHO"; pause
 
 files=()

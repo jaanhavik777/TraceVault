@@ -173,7 +173,18 @@ check("T-WF-27", "lookups return statuses, severities, services and engineers fo
 let ollamaUp = false;
 try { await fetch(OLLAMA, { signal: AbortSignal.timeout(3000) }); ollamaUp = true; } catch {} // any HTTP answer means Ollama is running
 if (!ollamaUp) {
-  skipped("T-SRCH-00", "semantic search tests", `Ollama is not reachable at ${OLLAMA}; start it and run ollama pull nomic-embed-text`);
+  skipped("T-SRCH-00", "semantic search ranking tests", `Ollama is not reachable at ${OLLAMA}; start it and run ollama pull nomic-embed-text`);
+  const searchUnavailable = await call(J.cookie, "GET", "/api/search?q=payment%20failure");
+  const similarUnavailable = await call(J.cookie, "GET", "/api/incidents/6/similar");
+  check(
+    "T-SRCH-14",
+    "semantic search and similar-incident APIs report 503 with a helpful message when Ollama is unavailable",
+    searchUnavailable.s === 503 &&
+      similarUnavailable.s === 503 &&
+      /semantic search is unavailable/i.test(searchUnavailable.j?.error ?? "") &&
+      /semantic search is unavailable/i.test(similarUnavailable.j?.error ?? ""),
+    JSON.stringify({ search: searchUnavailable, similar: similarUnavailable })
+  );
 } else {
   const Q = "Payment requests failing after recent deployment because of database connection problems", enc = encodeURIComponent;
   const total = (await call(A.cookie, "GET", "/api/incidents")).j.length;

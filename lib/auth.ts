@@ -34,7 +34,7 @@ export class AuthError extends Error {
 
 /** Generic HTTP error for route handlers: throw new HttpError(404, "Incident not found"). */
 export class HttpError extends Error {
-  constructor(public status: 400 | 404 | 409, message: string) {
+  constructor(public status: 400 | 404 | 409 | 503, message: string) {
     super(message);
   }
 }

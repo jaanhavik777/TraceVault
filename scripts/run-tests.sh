@@ -28,14 +28,21 @@ psql_file sql/local_passwords.sql -q >/dev/null
 
 TMP="$(mktemp -d)"
 echo; echo "=================== DATABASE TESTS (tests/db-tests.sql) ==================="
-psql_file tests/db-tests.sql -At -F'|' 2>&1 | tr -d '\r' > "$TMP/db.txt"
+if ! psql_file tests/db-tests.sql -At -F'|' > "$TMP/db.txt" 2> "$TMP/db-error.txt"; then
+  cat "$TMP/db-error.txt" >&2
+  echo "Database test execution failed; see the error above." >&2
+  exit 2
+fi
+tr -d '\r' < "$TMP/db.txt" > "$TMP/db-clean.txt"
+mv "$TMP/db-clean.txt" "$TMP/db.txt"
 grep '^T-DB-' "$TMP/db.txt" | awk -F'|' '{printf "%s  %s  %s\n", $5, $1, $2}'
 DB_FAIL=$(grep -c '^T-DB-.*|FAIL$' "$TMP/db.txt" || true)
 
 OLLAMA_ADDR="${OLLAMA_BASE_URL:-${OLLAMA_URL:-http://localhost:11434}}"
 if curl -s -m 3 -o /dev/null "$OLLAMA_ADDR"; then
   echo; echo ">> Ollama is running: indexing the seeded incidents (scripts/backfill-embeddings.ts)"
-  npx --yes tsx scripts/backfill-embeddings.ts 2>&1 | tr -d '\r' | grep -E "Total|Successful|Failed|rror"
+  npx --yes tsx scripts/backfill-embeddings.ts
+  bash scripts/apply-vector-index.sh
 else
   echo; echo ">> Ollama is not running: the semantic search tests will be skipped"
 fi

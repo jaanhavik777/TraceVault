@@ -6,23 +6,22 @@ Testing is done at three levels, matching the layers of the system:
 | Level | What it proves | How |
 |---|---|---|
 | Database | Constraints, triggers, stored functions, views, indexes, vector column and cascades behave as designed | `tests/db-tests.sql` (30 tests, runs in a transaction that is rolled back) |
-| API | Authentication, role-based authorization, validation, the incident lifecycle and semantic search | `tests/api.test.mjs` (72 tests against the running app and real PostgreSQL) |
-| User interface | The pages work in a browser for each role | Manual test cases in section 4 (each has a screenshot) |
+| API | Authentication, role-based authorization, validation, the incident lifecycle and semantic search | `tests/api.test.mjs` (API tests against the running app and real PostgreSQL; the exact count is written to `docs/test-results.md`) |
+| User interface | The pages work in a browser for each role | Manual test cases in section 4 (capture screenshots for cases actually executed) |
 
 The automated tests use the real database, not mocks, so they exercise the same SQL, triggers and functions that the application uses.
 
 ## 2. Test environment
 - PostgreSQL 16 with pgvector (Docker, `pgvector/pgvector:pg16`), schema and seed data from `npm run db:setup`
 - Next.js application (`npm run dev`), Node.js 20+
-- Ollama with `nomic-embed-text` for the semantic search tests (without Ollama those 13 tests are reported as SKIPPED, not passed)
+- Ollama with `nomic-embed-text` for semantic ranking tests. If Ollama is unavailable, ranking tests are skipped and a separate API test verifies that search returns HTTP 503 with a clear explanation.
 - Demo users: one admin and three engineers, all with the password `Password@123` (demo data only)
 
 ## 3. How to run the automated tests
 Start the database and the app (`docker compose up -d`, then `npm run dev` in a second terminal) and make sure Ollama is running, then:
 
 ```bash
-npm install -D tsx                                         # once: runs scripts/backfill-embeddings.ts
-npm pkg set scripts.test:all="bash scripts/run-tests.sh"   # once
+npm install
 npm run test:all
 ```
 
@@ -46,9 +45,10 @@ The database suite can also be run alone to take a screenshot:
 | T-INC-01 to 19 | Incident list, filters, create, detail | 19 | all filters, SQL-injection text, validation, correct timestamps |
 | T-WF-01 to 27 | Workflow | 27 | assign, status rules, timeline, resolve, permissions, frozen closed incidents |
 | T-SRCH-01 to 13 | Semantic search | 13 | every incident indexed with 768-dim vectors, ranking, similar-incident lookup, automatic indexing on create and resolve |
+| T-SRCH-14 | Semantic-search availability | 1 (when Ollama is unavailable) | API returns HTTP 503 with a clear message instead of a successful empty result |
 
 ## 4. Manual user-interface test cases
-Run each case in the browser and tick the result. Save a screenshot as `docs/screenshots/ui-<ID>.png`.
+Run each case in the browser, record the actual result, and save a screenshot as `docs/screenshots/ui-<ID>.png` for cases executed.
 
 | ID | Steps | Expected | Result |
 |---|---|---|---|
@@ -65,7 +65,7 @@ Run each case in the browser and tick the result. Save a screenshot as `docs/scr
 | T-UI-11 | As the assigned engineer record a resolution | Resolution card appears; resolve form disappears; timeline frozen | ☐ pass ☐ fail |
 | T-UI-12 | On `/search` click "Use example" then "Search" | Five ranked results with similarity %, root cause and resolution | ☐ pass ☐ fail |
 | T-UI-13 | Open an incident page | "Similar historical incidents" panel lists other incidents | ☐ pass ☐ fail |
-| T-UI-14 | Stop Ollama, then search | A clear "semantic search is unavailable" message; the rest of the app keeps working. **Known gap:** the current implementation shows an empty result list with no message (see section 5) | ☐ pass ☐ fail |
+| T-UI-14 | Stop Ollama, then search and open an incident's similar-incidents panel | Search displays a clear "semantic search is unavailable" message; the similar-incidents panel displays the API error instead of "no similar incidents". Incident creation and resolution remain available. | ☐ pass ☐ fail |
 | T-UI-15 | Stop Docker, then try to log in | An "Database unavailable. Is Docker running?" message within seconds, no endless spinner | ☐ pass ☐ fail |
 | T-UI-16 | Click "Log out", then press the browser Back button | Protected pages redirect to `/login` | ☐ pass ☐ fail |
 
@@ -80,20 +80,14 @@ Testing found real problems; each fix is covered by a test that now guards it.
 | Login hung indefinitely when the database was not reachable | Manual test with Docker stopped | 5 s connection timeout and a clear 503 message | T-UI-15 |
 | The demo-password script only updated users by fixed email, so a renamed seed user could never log in | Logging in as the renamed user | One statement updates every user still holding a placeholder hash | T-AUTH-06 |
 | Demo query output depended on the order the SQL files were run (a data-changing demo ran first) | Running the demo files | Fixed run order in `scripts/run-demos.sh`; before/after output in the transaction demo | n/a (documented) |
-| Semantic search fails silently: with Ollama stopped, `/api/search` and `/api/incidents/[id]/similar` return 200 with an empty list, so the user cannot tell "no matches" from "service down" | Measured with Ollama stopped; manual case T-UI-14 | **Open**: the embedding code should raise a clear error and the routes should answer 503 with a message | T-UI-14 |
+| Semantic search previously failed silently when Ollama was stopped | Measured with Ollama stopped; manual case T-UI-14 | Embedding-provider failures now propagate to the API as HTTP 503 with a clear message. The search page and similar-incidents panel display that message. Incident embedding upserts remain non-blocking. | T-SRCH-14 (when Ollama is unavailable); manual T-UI-14 |
 | A shared module lost an export after a merge conflict, breaking five files | `npm run typecheck` | Restored the export; typecheck is run before every merge | typecheck |
 
 ## 6. Limitations
 - No load or performance testing; the data set is small by design.
 - No automated browser tests; the user interface is verified with the manual cases above.
 - Semantic ranking quality is judged on the example query (T-SRCH-05, T-SRCH-09) and by reading the results, not by a benchmark.
-- The project defines an IVFFlat vector index in
-  `sql/09_kushi_vector_and_indexes.sql`. The index was not present
-  in the database during this verification, so the current database
-  uses exact vector similarity search without that approximate
-  nearest-neighbour index. On a small dataset, PostgreSQL may choose
-  a sequential scan. The vector-index demonstration should be run
-  after applying the index-creation SQL.
+- The IVFFlat vector index is intentionally created after embeddings exist. `npm run db:vector-index` applies it idempotently; `npm run demo:reset`, `npm run test:all`, and `bash scripts/run-demos.sh ...` apply it automatically after a successful embedding backfill. If Ollama is unavailable, the backfill and vector index are skipped. PostgreSQL may still choose a sequential scan on small datasets.
 - The services, dependencies, deployments, dashboard and admin APIs are not covered by the automated suite yet.
 - A deactivated user stays logged in until the session token expires (8 hours).
 - Test users share one demo password; this must never be used outside local development.

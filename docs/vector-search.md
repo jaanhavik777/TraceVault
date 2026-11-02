@@ -112,4 +112,4 @@ For small datasets, PostgreSQL may still choose a sequential scan because it can
 
 Vector search extends TraceVault beyond traditional relational queries by enabling semantic retrieval of historical incident information.
 
-The combination of Ollama embeddings, PostgreSQL, and pgvector provides a locally generated and stored semantic search pipeline. It helps engineers find relevant incidents and resolutions more effectively.
+If Ollama is unavailable or the configured model is missing, semantic-search endpoints return HTTP 503 with a user-facing explanation rather than reporting an empty result set. Incident creation and resolution are not blocked by embedding failures; a later backfill can rebuild missing embeddings.\n\nThe combination of Ollama embeddings, PostgreSQL, and pgvector provides a locally generated and stored semantic search pipeline. It helps engineers find relevant incidents and resolutions more effectively.

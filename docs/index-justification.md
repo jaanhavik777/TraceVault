@@ -1,8 +1,8 @@
-﻿# Index Justification and Query Plan Analysis
+# Index Justification and Query Plan Analysis
 
 ## Query Plan Demonstration
 
-The query plans were captured using `EXPLAIN ANALYZE` with `enable_seqscan` disabled to demonstrate the available indexes.
+The query plans were captured using `EXPLAIN ANALYZE` with `enable_seqscan` disabled to demonstrate the available indexes. The IVFFlat index is created after embeddings are populated; run `npm run db:vector-index` to create or verify it.
 
 PostgreSQL may normally prefer a sequential scan on small tables because scanning a few rows directly can be cheaper than using an index. Disabling sequential scans for this demonstration helps show how the indexes can be used. This setting was applied only to the individual demonstration queries.
 
