@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "db:setup": "bash scripts/setup-db.sh",
     "db:reset": "bash scripts/reset-db.sh",
-    "test:all": "bash scripts/run-tests.sh"
+    "test:all": "bash scripts/run-tests.sh",
+    "demo:reset": "bash scripts/demo-reset.sh"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

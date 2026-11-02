@@ -87,7 +87,13 @@ Testing found real problems; each fix is covered by a test that now guards it.
 - No load or performance testing; the data set is small by design.
 - No automated browser tests; the user interface is verified with the manual cases above.
 - Semantic ranking quality is judged on the example query (T-SRCH-05, T-SRCH-09) and by reading the results, not by a benchmark.
-- The vector index is IVFFlat. On a table of a few incidents PostgreSQL chooses a sequential scan anyway, so results are exact. The `EXPLAIN` demo needs `SET enable_seqscan = off`, and IVFFlat with that setting can return fewer rows unless `SET ivfflat.probes` is raised.
+- The project defines an IVFFlat vector index in
+  `sql/09_kushi_vector_and_indexes.sql`. The index was not present
+  in the database during this verification, so the current database
+  uses exact vector similarity search without that approximate
+  nearest-neighbour index. On a small dataset, PostgreSQL may choose
+  a sequential scan. The vector-index demonstration should be run
+  after applying the index-creation SQL.
 - The services, dependencies, deployments, dashboard and admin APIs are not covered by the automated suite yet.
 - A deactivated user stays logged in until the session token expires (8 hours).
 - Test users share one demo password; this must never be used outside local development.
